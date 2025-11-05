@@ -1,6 +1,7 @@
 import express, { json } from 'express';
 import cookieParser from 'cookie-parser';
 import connectDB from './utils/db.js';
+import userRoute from './routes/user.route.js';
 import dotenv from 'dotenv';
 dotenv.config({});
 
@@ -10,6 +11,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
+
+//routes
+app.use('/api/user', userRoute);
 
 
 app.listen(PORT, () => {
