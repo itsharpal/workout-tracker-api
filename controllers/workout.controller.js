@@ -78,3 +78,34 @@ export const updateWorkout = async (req, res) => {
         });
     }
 }
+
+
+export const deleteWorkoutHard = async (req, res) => {
+  try {
+    const { workoutId } = req.params;
+    const userId = req.userId;
+
+    const workout = await Workout.findOneAndDelete({
+      _id: workoutId,
+      user: userId
+    });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        message: "Workout not found or you do not have permission to delete it."
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Workout permanently deleted.",
+    });
+  } catch (error) {
+    console.error("Error deleting workout (hard):", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error. Please try again later."
+    });
+  }
+};
