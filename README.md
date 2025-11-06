@@ -54,7 +54,7 @@ node seed-data/seed.js
 
 This will connect to the database (using `MONGO_URI` from `.env`), clear existing exercises and insert default ones.
 
-## API (concise)
+## API
 
 Base path: `/api`
 
@@ -79,77 +79,93 @@ Protected routes (require cookie `token`):
   - optional query: `from`, `to` (dates) to filter the report period
   - returns: totals, completion rate, last7/30 days counts, topExercises
 
-## Try it — curl examples
+## Try it — Postman examples
 
-Use these examples from the `backend/` folder. They assume the server runs at `http://localhost:3000`.
+Use Postman to exercise the API with saved requests and environment variables. These steps assume your server runs at `http://localhost:3000`.
+
+Quick setup in Postman
+- Create a new Environment (e.g., `Local`) and add variables:
+  - `baseUrl` = `http://localhost:3000`
+  - `exerciseId` = (leave blank until you seed and copy an id)
+  - `workoutId` = (used later)
+
+- In Postman preferences, ensure "Send cookies automatically" is enabled (Postman stores cookies per environment/host).
+
+Requests (save each as a Postman request under a collection):
 
 1) Signup
+- Method: POST
+- URL: `{{baseUrl}}/api/user/signup`
+- Headers: `Content-Type: application/json`
+- Body (raw JSON):
 
-```bash
-curl -X POST http://localhost:3000/api/user/signup \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Alice","email":"alice@example.com","password":"Pa$$w0rd"}'
+```json
+{ "name": "Alice", "email": "alice@example.com", "password": "Pa$$w0rd" }
 ```
 
-2) Login (stores cookie in cookie-jar)
+2) Login
+- Method: POST
+- URL: `{{baseUrl}}/api/user/login`
+- Headers: `Content-Type: application/json`
+- Body:
 
-```bash
-curl -c cookies.txt -X POST http://localhost:3000/api/user/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","password":"Pa$$w0rd"}'
+```json
+{ "email": "alice@example.com", "password": "Pa$$w0rd" }
 ```
 
-3) Create a workout (replace <exerciseId> with a real id from the `exercises` collection)
+Postman will receive the cookie set by the server and store it for subsequent requests to the same host.
 
-```bash
-curl -b cookies.txt -X POST http://localhost:3000/api/workout/new \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title":"Leg Day",
-    "description":"Strength session",
-    "exercises":[{"exercise":"<exerciseId>","sets":4,"reps":10,"weight":60}],
-    "scheduledAt":"2025-11-10T07:00:00.000Z",
-    "status":"pending"
-  }'
+3) Create workout
+- Method: POST
+- URL: `{{baseUrl}}/api/workout/new`
+- Headers: `Content-Type: application/json`
+- Body example (replace `{{exerciseId}}` with a seeded exercise ObjectId):
+
+```json
+{
+  "title": "Leg Day",
+  "description": "Strength session",
+  "exercises": [ { "exercise": "{{exerciseId}}", "sets": 4, "reps": 10, "weight": 60 } ],
+  "scheduledAt": "2025-11-10T07:00:00.000Z",
+  "status": "pending"
+}
 ```
 
-4) Update a workout
+Save the returned workout `_id` into the `workoutId` environment variable (Postman can do this with a test script: `pm.environment.set('workoutId', pm.response.json().workout._id)`).
 
-```bash
-curl -b cookies.txt -X POST http://localhost:3000/api/workout/update/<workoutId> \
-  -H "Content-Type: application/json" \
-  -d '{"status":"completed","progressReport":{"completedWorkouts":1,"totalWeightLifted":240}}'
+4) Update workout
+- Method: POST
+- URL: `{{baseUrl}}/api/workout/update/{{workoutId}}`
+- Headers: `Content-Type: application/json`
+- Body example:
+
+```json
+{ "status": "completed", "progressReport": { "completedWorkouts": 1, "totalWeightLifted": 240 } }
 ```
 
 5) List workouts
+- Method: GET
+- URL: `{{baseUrl}}/api/workout/get?sort=asc`
 
-```bash
-curl -b cookies.txt "http://localhost:3000/api/workout/get?sort=asc"
-```
+6) Delete workout
+- Method: GET
+- URL: `{{baseUrl}}/api/workout/delete/{{workoutId}}`
 
-6) Delete a workout
-
-```bash
-curl -b cookies.txt "http://localhost:3000/api/workout/delete/<workoutId>"
-```
-
-7) Get report (optionally filter by date range)
-
-```bash
-curl -b cookies.txt "http://localhost:3000/api/workout/getReport?from=2025-11-01&to=2025-11-30"
-```
+7) Get report
+- Method: GET
+- URL: `{{baseUrl}}/api/workout/getReport?from=2025-11-01&to=2025-11-30`
 
 8) Logout
+- Method: GET
+- URL: `{{baseUrl}}/api/user/logout`
 
-```bash
-curl -b cookies.txt -c cookies.txt http://localhost:3000/api/user/logout
-```
+Postman tips
+- Use the Environment quick look (eye icon) to view/set `baseUrl`, `exerciseId`, `workoutId`.
+- Add a small test script to the Login request to confirm auth and optionally store values:
 
-Notes:
-- `-c cookies.txt` writes cookies to a file; `-b cookies.txt` sends them. This keeps the JWT cookie between requests.
-- Replace `<exerciseId>` and `<workoutId>` with real ObjectId values from your database.
 
-## Example responses (concise)
+
+## Example responses 
 
 Below are short example JSON responses you can expect from the API.
 
