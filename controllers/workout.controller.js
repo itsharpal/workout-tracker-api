@@ -1,4 +1,5 @@
 import { Workout } from "../models/workout.model.js";
+import { Exercise } from "../models/exercise.model.js";
 
 export const createWorkout = async (req, res) => {
     try {
@@ -144,3 +145,81 @@ export const listWorkout = async (req, res) => {
         });
     }
 }
+
+
+export const generateWorkoutReports = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { from, to } = req.query;
+
+        const filter = { user: userId };
+        if (from || to) {
+            filter.scheduledAt = {};
+            if (from) filter.scheduledAt.$gte = new Date(from);
+            if (to) filter.scheduledAt.$lte = new Date(to);
+        }
+
+        const workouts = await Workout.find(filter).populate("exercises.exercise", "name");;
+        if (!workouts.length) {
+            return res.status(200).json({
+                success: true,
+                message: "No workouts found for the selected period.",
+                report: {},
+            });
+        }
+
+        // Aggregate statistics
+        const totalWorkouts = workouts.length;
+        const completedWorkouts = workouts.filter(w => w.status === "completed").length;
+        const pendingWorkouts = workouts.filter(w => w.status === "pending").length;
+        const activeWorkouts = workouts.filter(w => w.status === "active").length;
+
+        const totalWeightLifted = workouts.reduce((sum, w) => sum + (w.progressReport?.totalWeightLifted || 0), 0);
+
+        const completionRate = ((completedWorkouts / totalWorkouts) * 100).toFixed(2);
+
+        // Workouts done in last 7 / 30 days
+        const now = new Date();
+        const last7Days = workouts.filter(w => new Date(w.scheduledAt) >= new Date(now - 7 * 24 * 60 * 60 * 1000)).length;
+        const last30Days = workouts.filter(w => new Date(w.scheduledAt) >= new Date(now - 30 * 24 * 60 * 60 * 1000)).length;
+
+
+        // Most frequent exercises
+        const exerciseCount = {};
+        workouts.forEach(w => {
+            w.exercises?.forEach(e => {
+                const name = e.exercise?.name || e.name;
+                if (name) exerciseCount[name] = (exerciseCount[name] || 0) + 1;
+            });
+        });
+
+        const topExercises = Object.entries(exerciseCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }));
+
+        // Return response
+        return res.status(200).json({
+            success: true,
+            message: "Workout report generated successfully.",
+            report: {
+                totalWorkouts,
+                completedWorkouts,
+                pendingWorkouts,
+                activeWorkouts,
+                totalWeightLifted,
+                completionRate: `${completionRate}%`,
+                last7Days,
+                last30Days,
+                topExercises
+            }
+        });
+
+    } catch (error) {
+        console.error("Error generating workout report:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error. Please try again later.",
+        });
+    }
+};
