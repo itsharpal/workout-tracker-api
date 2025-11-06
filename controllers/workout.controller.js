@@ -49,14 +49,14 @@ export const updateWorkout = async (req, res) => {
         const updatedWorkout = {
             title,
             description,
-            exercises, 
-            scheduledAt, 
-            status, 
-            comments, 
-            progressReport: {totalWorkouts, completedWorkouts, totalWeightLifted}
+            exercises,
+            scheduledAt,
+            status,
+            comments,
+            progressReport: { totalWorkouts, completedWorkouts, totalWeightLifted }
         }
 
-        let workout = await Workout.findOneAndUpdate({_id: workoutId, user: userId}, updatedWorkout, { new: true });
+        let workout = await Workout.findOneAndUpdate({ _id: workoutId, user: userId }, updatedWorkout, { new: true });
         if (!workout) {
             return res.status(404).json({
                 message: "workout doesn't exists",
@@ -81,31 +81,66 @@ export const updateWorkout = async (req, res) => {
 
 
 export const deleteWorkoutHard = async (req, res) => {
-  try {
-    const { workoutId } = req.params;
-    const userId = req.userId;
+    try {
+        const { workoutId } = req.params;
+        const userId = req.userId;
 
-    const workout = await Workout.findOneAndDelete({
-      _id: workoutId,
-      user: userId
-    });
+        const workout = await Workout.findOneAndDelete({
+            _id: workoutId,
+            user: userId
+        });
 
-    if (!workout) {
-      return res.status(404).json({
-        success: false,
-        message: "Workout not found or you do not have permission to delete it."
-      });
+        if (!workout) {
+            return res.status(404).json({
+                success: false,
+                message: "Workout not found or you do not have permission to delete it."
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Workout permanently deleted.",
+        });
+    } catch (error) {
+        console.error("Error deleting workout (hard):", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error. Please try again later."
+        });
     }
-
-    return res.status(200).json({
-      success: true,
-      message: "Workout permanently deleted.",
-    });
-  } catch (error) {
-    console.error("Error deleting workout (hard):", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error. Please try again later."
-    });
-  }
 };
+
+
+export const listWorkout = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { status, sort } = req.query;
+
+        const filter = { user: userId };
+        if (status) { filter.status = status };
+
+        const sortOrder = sort === "desc" ? -1 : 1
+
+        const workouts = await Workout.find(filter).sort({ scheduledAt: sortOrder });
+        if (workouts.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No workouts found for the given criteria.",
+                workouts: []
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Workouts fetched successfully.",
+            count: workouts.length,
+            workouts
+        })
+    } catch (error) {
+        console.error("Error deleting workout (hard):", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error. Please try again later."
+        });
+    }
+}
